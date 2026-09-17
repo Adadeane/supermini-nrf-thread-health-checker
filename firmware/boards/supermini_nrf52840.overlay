@@ -16,18 +16,6 @@
 		zephyr,uart-mcumgr = &cdc_acm_uart0;
 		zephyr,ot-uart = &cdc_acm_uart0;
 	};
-
-	leds {
-		compatible = "gpio-leds";
-		blue_led: led_0 {
-			gpios = <&gpio0 15 GPIO_ACTIVE_HIGH>;
-			label = "Blue LED";
-		};
-	};
-
-	aliases {
-		led0 = &blue_led;
-	};
 };
 
 &zephyr_udc0 {
@@ -37,6 +25,8 @@
 };
 
 &flash0 {
+	/delete-node/ partitions;
+
 	partitions {
 		compatible = "fixed-partitions";
 		#address-cells = <1>;
@@ -55,7 +45,7 @@
 			reg = <0x00026000 0x000C6000>;
 		};
 
-		/* Non-volatile Settings / Matter credentials storage (32 KB) */
+		/* Non-volatile Settings / credentials storage (32 KB) */
 		storage_partition: partition@ec000 {
 			label = "storage";
 			reg = <0x000EC000 0x00008000>;

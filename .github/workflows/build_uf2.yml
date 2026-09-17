@@ -34,7 +34,7 @@ jobs:
 
       - name: Compile OpenThread Firmware
         run: |
-          west build -b nice_nano_v2 -d build_ot app/firmware -- \
+          west build -b nrf52840dongle/nrf52840 -d build_ot app/firmware -- \
             -DEXTRA_DTC_OVERLAY_FILE=$GITHUB_WORKSPACE/app/firmware/boards/supermini_nrf52840.overlay \
             -DCONF_FILE=prj_openthread_only.conf
 
