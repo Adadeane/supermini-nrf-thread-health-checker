@@ -68,13 +68,18 @@ jobs:
         with:
           path: app
 
-      - name: Configure Git Safe Directory
-        run: |
-          git config --global --add safe.directory "*"
-
       - name: Locate Matter Sample & Compile Firmware
         shell: bash
         run: |
+          echo "=== Setting up Environment ==="
+          # Source zephyr environment or virtualenv if present
+          for env_file in /workdir/.venv/bin/activate /workdir/ncs/zephyr/zephyr-env.sh; do
+            if [ -f "$env_file" ]; then
+              echo "Sourcing $env_file"
+              source "$env_file" || true
+            fi
+          done
+
           echo "=== Searching for Matter Samples in NCS ==="
           SAMPLE_PATH=$(find / -type d -path "*/samples/matter/light_bulb" 2>/dev/null | head -n 1)
           if [ -z "$SAMPLE_PATH" ]; then
