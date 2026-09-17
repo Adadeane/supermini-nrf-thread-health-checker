@@ -71,14 +71,18 @@ jobs:
       - name: Locate Matter Sample & Compile Firmware
         shell: bash
         run: |
-          echo "=== Setting up Environment ==="
-          # Source zephyr environment or virtualenv if present
-          for env_file in /workdir/.venv/bin/activate /workdir/ncs/zephyr/zephyr-env.sh; do
-            if [ -f "$env_file" ]; then
-              echo "Sourcing $env_file"
-              source "$env_file" || true
+          echo "=== Initializing Nordic Toolchain Environment ==="
+          if command -v nrfutil >/dev/null 2>&1; then
+            eval "$(nrfutil toolchain-manager env --as-script)" || true
+          fi
+          if ! command -v west >/dev/null 2>&1; then
+            WEST_BIN=$(find / -name "west" -type f -executable 2>/dev/null | head -n 1)
+            if [ -n "$WEST_BIN" ]; then
+              export PATH="$(dirname "$WEST_BIN"):$PATH"
             fi
-          done
+          fi
+          echo "West binary: $(which west || echo 'NOT FOUND')"
+          west --version || true
 
           echo "=== Searching for Matter Samples in NCS ==="
           SAMPLE_PATH=$(find / -type d -path "*/samples/matter/light_bulb" 2>/dev/null | head -n 1)
@@ -116,6 +120,9 @@ jobs:
       - name: Convert to UF2
         shell: bash
         run: |
+          if command -v nrfutil >/dev/null 2>&1; then
+            eval "$(nrfutil toolchain-manager env --as-script)" || true
+          fi
           python3 app/tools/uf2conv.py -c -b 0x26000 -f 0xada52840 \
             build_matter/zephyr/zephyr.hex \
             -o supermini_matter_health_checker.uf2
