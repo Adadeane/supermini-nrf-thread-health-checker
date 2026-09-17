@@ -71,12 +71,17 @@ jobs:
       - name: Locate Matter Sample & Compile Firmware
         shell: bash
         run: |
+          echo "=== Installing System Dependencies ==="
+          apt-get update && apt-get install -y libyaml-0-2 || true
+
           echo "=== Setting up Toolchain Environment ==="
           TC_DIR=$(find /root/ncs/toolchains -maxdepth 1 -mindepth 1 -type d 2>/dev/null | head -n 1)
           if [ -n "$TC_DIR" ]; then
             echo "Found Toolchain at: $TC_DIR"
             export PATH="$TC_DIR/usr/local/bin:$TC_DIR/usr/bin:$PATH"
-            export LD_LIBRARY_PATH="$TC_DIR/usr/local/lib:$TC_DIR/usr/lib:$TC_DIR/lib:$LD_LIBRARY_PATH"
+            for lib_dir in $(find "$TC_DIR" -type d \( -name "lib" -o -name "lib64" \) 2>/dev/null); do
+              export LD_LIBRARY_PATH="$lib_dir:$LD_LIBRARY_PATH"
+            done
 
             SDK_DIR=$(find "$TC_DIR" -name "zephyr-sdk*" -type d 2>/dev/null | head -n 1)
             if [ -n "$SDK_DIR" ]; then
