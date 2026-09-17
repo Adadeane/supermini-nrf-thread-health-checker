@@ -77,6 +77,12 @@ jobs:
             echo "Found Toolchain at: $TC_DIR"
             export PATH="$TC_DIR/usr/local/bin:$TC_DIR/usr/bin:$PATH"
             export LD_LIBRARY_PATH="$TC_DIR/usr/local/lib:$TC_DIR/usr/lib:$TC_DIR/lib:$LD_LIBRARY_PATH"
+
+            SDK_DIR=$(find "$TC_DIR" -name "zephyr-sdk*" -type d 2>/dev/null | head -n 1)
+            if [ -n "$SDK_DIR" ]; then
+              echo "Found Zephyr SDK at: $SDK_DIR"
+              export ZEPHYR_SDK_INSTALL_DIR="$SDK_DIR"
+            fi
           fi
           
           if [ -f /workdir/zephyr/zephyr-env.sh ]; then
@@ -113,8 +119,8 @@ jobs:
           fi
           echo "Selected base conf: $CONF"
 
-          # Build Matter firmware
-          west build -p always -b "$BOARD" -d build_matter "$SAMPLE_PATH" -- \
+          # Build Matter firmware as a single image without MCUboot sysbuild
+          west build --no-sysbuild -p always -b "$BOARD" -d build_matter "$SAMPLE_PATH" -- \
             -DEXTRA_DTC_OVERLAY_FILE="$GITHUB_WORKSPACE/app/firmware/boards/supermini_nrf52840.overlay" \
             -DCONF_FILE="$CONF" \
             -DEXTRA_CONF_FILE="$GITHUB_WORKSPACE/app/firmware/boards/supermini_matter.conf"
