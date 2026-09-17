@@ -71,8 +71,12 @@ jobs:
       - name: Locate Matter Sample & Compile Firmware
         shell: bash
         run: |
-          echo "=== Installing System Dependencies ==="
-          apt-get update && apt-get install -y libyaml-0-2 || true
+          echo "=== Installing System Dependencies & GN ==="
+          apt-get update && apt-get install -y libyaml-0-2 unzip wget || true
+          wget -qO /tmp/gn.zip https://chrome-infra-packages.appspot.com/dl/gn/gn/linux-amd64/+/latest
+          unzip -o /tmp/gn.zip -d /usr/local/bin
+          chmod +x /usr/local/bin/gn
+          gn --version || true
 
           echo "=== Setting up Toolchain Environment ==="
           TC_DIR=$(find /root/ncs/toolchains -maxdepth 1 -mindepth 1 -type d 2>/dev/null | head -n 1)
