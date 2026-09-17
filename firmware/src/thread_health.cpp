@@ -100,9 +100,11 @@ void thread_health_collect(thread_health_snapshot_t *snapshot)
         otRouterInfo parentInfo;
         if (otThreadGetParentInfo(s_ot_instance, &parentInfo) == OT_ERROR_NONE) {
             snapshot->hasParent = true;
-            snapshot->parentRssi = parentInfo.mRssi;
             snapshot->parentLqi = parentInfo.mLinkQualityIn;
-            snapshot->parentMargin = parentInfo.mLinkMargin;
+            int8_t avgRssi = 0;
+            otThreadGetParentAverageRssi(s_ot_instance, &avgRssi);
+            snapshot->parentRssi = avgRssi;
+            snapshot->parentMargin = parentInfo.mPathCost;
         }
     }
 
@@ -214,8 +216,11 @@ void thread_health_ping_border_router(void)
         memset(&pingConfig, 0, sizeof(pingConfig));
 
         /* Ping leader or discovered border router */
-        const otIp6Address *leaderAddr = otThreadGetLeaderData(s_ot_instance, NULL) != NULL ?
-                                         otThreadGetRloc(s_ot_instance) : NULL;
+        otLeaderData leaderData;
+        const otIp6Address *leaderAddr = NULL;
+        if (otThreadGetLeaderData(s_ot_instance, &leaderData) == OT_ERROR_NONE) {
+            leaderAddr = otThreadGetRloc(s_ot_instance);
+        }
 
         if (leaderAddr) {
             pingConfig.mDestination = *leaderAddr;

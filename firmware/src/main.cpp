@@ -10,6 +10,7 @@
 #include <zephyr/usb/usb_device.h>
 #include <zephyr/drivers/uart.h>
 #include <zephyr/net/openthread.h>
+#include <stdio.h>
 
 #include <openthread/instance.h>
 #include <openthread/thread.h>
