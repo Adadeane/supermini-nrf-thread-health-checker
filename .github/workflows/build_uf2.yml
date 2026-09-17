@@ -122,9 +122,10 @@ jobs:
           echo "Selected board target: $BOARD"
 
           # Determine base config file
-          CONF="prj_no_dfu.conf"
-          if [ ! -f "$SAMPLE_PATH/prj_no_dfu.conf" ]; then
-            CONF="prj.conf"
+          NO_DFU_CONF=$(find "$SAMPLE_PATH" -name "prj_no_dfu.conf" 2>/dev/null | head -n 1)
+          CONF="prj.conf"
+          if [ -n "$NO_DFU_CONF" ]; then
+            CONF="$NO_DFU_CONF"
           fi
           echo "Selected base conf: $CONF"
 
