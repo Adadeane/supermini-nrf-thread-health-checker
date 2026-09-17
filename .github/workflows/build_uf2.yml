@@ -71,18 +71,20 @@ jobs:
       - name: Locate Matter Sample & Compile Firmware
         shell: bash
         run: |
-          echo "=== Initializing Nordic Toolchain Environment ==="
-          if command -v nrfutil >/dev/null 2>&1; then
-            eval "$(nrfutil toolchain-manager env --as-script)" || true
+          echo "=== Setting up Toolchain Environment ==="
+          TC_DIR=$(find /root/ncs/toolchains -maxdepth 1 -mindepth 1 -type d 2>/dev/null | head -n 1)
+          if [ -n "$TC_DIR" ]; then
+            echo "Found Toolchain at: $TC_DIR"
+            export PATH="$TC_DIR/usr/local/bin:$TC_DIR/usr/bin:$PATH"
+            export LD_LIBRARY_PATH="$TC_DIR/usr/local/lib:$TC_DIR/usr/lib:$TC_DIR/lib:$LD_LIBRARY_PATH"
           fi
-          if ! command -v west >/dev/null 2>&1; then
-            WEST_BIN=$(find / -name "west" -type f -executable 2>/dev/null | head -n 1)
-            if [ -n "$WEST_BIN" ]; then
-              export PATH="$(dirname "$WEST_BIN"):$PATH"
-            fi
+          
+          if [ -f /workdir/zephyr/zephyr-env.sh ]; then
+            source /workdir/zephyr/zephyr-env.sh || true
           fi
+
           echo "West binary: $(which west || echo 'NOT FOUND')"
-          west --version || true
+          west --version
 
           echo "=== Searching for Matter Samples in NCS ==="
           SAMPLE_PATH=$(find / -type d -path "*/samples/matter/light_bulb" 2>/dev/null | head -n 1)
@@ -120,8 +122,10 @@ jobs:
       - name: Convert to UF2
         shell: bash
         run: |
-          if command -v nrfutil >/dev/null 2>&1; then
-            eval "$(nrfutil toolchain-manager env --as-script)" || true
+          TC_DIR=$(find /root/ncs/toolchains -maxdepth 1 -mindepth 1 -type d 2>/dev/null | head -n 1)
+          if [ -n "$TC_DIR" ]; then
+            export PATH="$TC_DIR/usr/local/bin:$TC_DIR/usr/bin:$PATH"
+            export LD_LIBRARY_PATH="$TC_DIR/usr/local/lib:$TC_DIR/usr/lib:$TC_DIR/lib:$LD_LIBRARY_PATH"
           fi
           python3 app/tools/uf2conv.py -c -b 0x26000 -f 0xada52840 \
             build_matter/zephyr/zephyr.hex \
