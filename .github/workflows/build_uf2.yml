@@ -12,119 +12,42 @@ permissions:
 
 jobs:
   build-openthread:
-    name: Build OpenThread Health Checker (Fast)
+    name: Build OpenThread Health Checker
     runs-on: ubuntu-latest
-    container:
-      image: nordicplayground/nrfconnect-sdk:v2.7-branch
-      options: --user root
 
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+        with:
+          path: app
 
-      - name: Configure Git Safe Directory
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Setup Zephyr Project and Toolchain
+        uses: zephyrproject-rtos/action-zephyr-setup@v1
+        with:
+          app-path: app
+          toolchains: arm-zephyr-eabi
+
+      - name: Compile OpenThread Firmware
         run: |
-          git config --global --add safe.directory "$GITHUB_WORKSPACE"
-          git config --global --add safe.directory "*"
-
-      - name: Setup Workspace and Compile
-        run: |
-          # Check if NCS is pre-installed in container
-          if [ -d "/workdir/ncs" ]; then
-            cd /workdir/ncs
-          elif [ -d "/workdir" ]; then
-            cd /workdir
-          else
-            mkdir -p /workspace/ncs
-            cd /workspace/ncs
-            west init -m https://github.com/nrfconnect/sdk-nrf --mr v2.7.0
-            west update --narrow -o=--depth=1 zephyr nrf
-          fi
-
-          echo "Current working directory: $(pwd)"
-          
-          # Detect available board target
-          BOARD="nice_nano_v2"
-          if ! west boards 2>/dev/null | grep -q "nice_nano_v2"; then
-            if west boards 2>/dev/null | grep -q "nice_nano"; then
-              BOARD="nice_nano"
-            else
-              BOARD="nrf52840dongle_nrf52840"
-            fi
-          fi
-          echo "Selected board target: $BOARD"
-
-          west build -b $BOARD -d $GITHUB_WORKSPACE/build_ot $GITHUB_WORKSPACE/firmware -- \
-            -DEXTRA_DTC_OVERLAY_FILE=$GITHUB_WORKSPACE/firmware/boards/supermini_nrf52840.overlay \
+          west build -b nice_nano_v2 -d build_ot app/firmware -- \
+            -DEXTRA_DTC_OVERLAY_FILE=$GITHUB_WORKSPACE/app/firmware/boards/supermini_nrf52840.overlay \
             -DCONF_FILE=prj_openthread_only.conf
 
       - name: Convert to UF2
         run: |
-          python3 $GITHUB_WORKSPACE/tools/uf2conv.py -c -b 0x26000 -f 0xada52840 \
-            $GITHUB_WORKSPACE/build_ot/zephyr/zephyr.hex \
-            -o $GITHUB_WORKSPACE/supermini_openthread_cli.uf2
+          python3 app/tools/uf2conv.py -c -b 0x26000 -f 0xada52840 \
+            build_ot/zephyr/zephyr.hex \
+            -o supermini_openthread_cli.uf2
 
-      - name: Upload OpenThread UF2 Artifact
+      - name: Upload UF2 Artifact
         uses: actions/upload-artifact@v4
         with:
           name: supermini-openthread-uf2
           path: |
             supermini_openthread_cli.uf2
             build_ot/zephyr/zephyr.hex
-
-  build-matter:
-    name: Build Matter On/Off Light Health Checker
-    runs-on: ubuntu-latest
-    container:
-      image: nordicplayground/nrfconnect-sdk:v2.7-branch
-      options: --user root
-
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-
-      - name: Configure Git Safe Directory
-        run: |
-          git config --global --add safe.directory "$GITHUB_WORKSPACE"
-          git config --global --add safe.directory "*"
-
-      - name: Setup Workspace and Compile Matter
-        run: |
-          if [ -d "/workdir/ncs" ]; then
-            cd /workdir/ncs
-          elif [ -d "/workdir" ]; then
-            cd /workdir
-          else
-            mkdir -p /workspace/ncs
-            cd /workspace/ncs
-            west init -m https://github.com/nrfconnect/sdk-nrf --mr v2.7.0
-            west update --narrow -o=--depth=1 zephyr nrf connectedhomeip
-          fi
-
-          BOARD="nice_nano_v2"
-          if ! west boards 2>/dev/null | grep -q "nice_nano_v2"; then
-            if west boards 2>/dev/null | grep -q "nice_nano"; then
-              BOARD="nice_nano"
-            else
-              BOARD="nrf52840dongle_nrf52840"
-            fi
-          fi
-          echo "Selected board target: $BOARD"
-
-          west build -b $BOARD -d $GITHUB_WORKSPACE/build_matter $GITHUB_WORKSPACE/firmware -- \
-            -DEXTRA_DTC_OVERLAY_FILE=$GITHUB_WORKSPACE/firmware/boards/supermini_nrf52840.overlay \
-            -DCONF_FILE=prj.conf
-
-      - name: Convert Matter to UF2
-        run: |
-          python3 $GITHUB_WORKSPACE/tools/uf2conv.py -c -b 0x26000 -f 0xada52840 \
-            $GITHUB_WORKSPACE/build_matter/zephyr/zephyr.hex \
-            -o $GITHUB_WORKSPACE/supermini_matter_thread_health_checker.uf2
-
-      - name: Upload Matter UF2 Artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: supermini-matter-uf2
-          path: |
-            supermini_matter_thread_health_checker.uf2
-            build_matter/zephyr/zephyr.hex
