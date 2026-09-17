@@ -43,11 +43,14 @@ jobs:
           python3 app/tools/uf2conv.py -c -b 0x26000 -f 0xada52840 \
             build_ot/zephyr/zephyr.hex \
             -o supermini_openthread_cli.uf2
+          python3 app/tools/uf2conv.py -c -b 0x26000 -f 0x239a00b3 \
+            build_ot/zephyr/zephyr.hex \
+            -o supermini_openthread_cli_nicenano.uf2
 
       - name: Upload UF2 Artifact
         uses: actions/upload-artifact@v4
         with:
           name: supermini-openthread-uf2
           path: |
-            supermini_openthread_cli.uf2
+            *.uf2
             build_ot/zephyr/zephyr.hex
