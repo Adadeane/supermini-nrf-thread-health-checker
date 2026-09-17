@@ -1,0 +1,65 @@
+name: Build SuperMini nRF52840 Thread Health Checker UF2
+
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+    branches: [ main, master ]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    container:
+      image: nordicsemi/nrfconnect-chip:v2.7.0
+      options: --user root
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Initialize West workspace
+        run: |
+          mkdir -p /workspace
+          cd /workspace
+          west init -m https://github.com/nrfconnect/sdk-nrf --mr v2.7.0 /workspace/ncs
+          cd /workspace/ncs
+          west config --global safe.directory '*'
+          west update --narrow -o=--depth=1 zephyr nrf connectedhomeip
+
+      - name: Build Matter + OpenThread Health Checker Firmware
+        run: |
+          cd $GITHUB_WORKSPACE
+          west build -b nice_nano_v2 -d build_matter firmware -- \
+            -DEXTRA_DTC_OVERLAY_FILE=boards/supermini_nrf52840.overlay \
+            -DCONF_FILE=prj.conf
+
+      - name: Convert Matter Firmware to UF2
+        run: |
+          python3 tools/uf2conv.py -c -b 0x26000 -f 0xada52840 \
+            build_matter/zephyr/zephyr.hex \
+            -o supermini_matter_thread_health_checker.uf2
+
+      - name: Build Pure OpenThread CLI Variant (Lightweight)
+        run: |
+          cd $GITHUB_WORKSPACE
+          west build -b nice_nano_v2 -d build_ot firmware -- \
+            -DEXTRA_DTC_OVERLAY_FILE=boards/supermini_nrf52840.overlay \
+            -DCONF_FILE=prj_openthread_only.conf
+
+      - name: Convert OpenThread Firmware to UF2
+        run: |
+          python3 tools/uf2conv.py -c -b 0x26000 -f 0xada52840 \
+            build_ot/zephyr/zephyr.hex \
+            -o supermini_openthread_cli.uf2
+
+      - name: Upload UF2 Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: supermini-thread-uf2-firmware
+          path: |
+            *.uf2
+            build_matter/zephyr/zephyr.hex
+            build_ot/zephyr/zephyr.hex

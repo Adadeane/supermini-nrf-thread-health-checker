@@ -1,0 +1,70 @@
+/*
+ * SuperMini nRF52840 Device Tree Overlay
+ *
+ * Configures:
+ * 1. USB CDC ACM Virtual Serial Port for Console and OpenThread CLI
+ * 2. Adafruit / nice!nano UF2 Bootloader Safe Partition Map (Application at 0x26000)
+ *
+ * Copyright (c) 2026 Antigravity
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+/ {
+	chosen {
+		zephyr,console = &cdc_acm_uart0;
+		zephyr,shell-uart = &cdc_acm_uart0;
+		zephyr,uart-mcumgr = &cdc_acm_uart0;
+		zephyr,ot-uart = &cdc_acm_uart0;
+	};
+
+	leds {
+		compatible = "gpio-leds";
+		blue_led: led_0 {
+			gpios = <&gpio0 15 GPIO_ACTIVE_HIGH>;
+			label = "Blue LED";
+		};
+	};
+
+	aliases {
+		led0 = &blue_led;
+	};
+};
+
+&zephyr_udc0 {
+	cdc_acm_uart0: cdc_acm_uart0 {
+		compatible = "zephyr,cdc-acm-uart";
+	};
+};
+
+&flash0 {
+	partitions {
+		compatible = "fixed-partitions";
+		#address-cells = <1>;
+		#size-cells = <1>;
+
+		/* Reserved for Adafruit UF2 / nice!nano bootloader */
+		boot_partition: partition@0 {
+			label = "adafruit_uf2_bootloader";
+			reg = <0x00000000 0x00026000>;
+			read-only;
+		};
+
+		/* Application code partition (792 KB) */
+		slot0_partition: partition@26000 {
+			label = "image-0";
+			reg = <0x00026000 0x000C6000>;
+		};
+
+		/* Non-volatile Settings / Matter credentials storage (32 KB) */
+		storage_partition: partition@ec000 {
+			label = "storage";
+			reg = <0x000EC000 0x00008000>;
+		};
+
+		/* Reserved for Adafruit bootloader config / settings (48 KB) */
+		boot_settings_partition: partition@f4000 {
+			label = "adafruit_boot_settings";
+			reg = <0x000F4000 0x0000C000>;
+		};
+	};
+};

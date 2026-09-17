@@ -1,0 +1,15 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.csv
+
+# Zephyr & CMake build outputs
+build/
+build_matter/
+build_ot/
+*.hex
+*.bin
+*.elf
+*.uf2
+.west/
