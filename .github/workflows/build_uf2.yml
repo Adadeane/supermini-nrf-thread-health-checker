@@ -12,7 +12,7 @@ permissions:
 
 jobs:
   build-openthread:
-    name: Build OpenThread Health Checker
+    name: Build OpenThread Health Checker (Fast)
     runs-on: ubuntu-latest
 
     steps:
@@ -47,10 +47,81 @@ jobs:
             build_ot/zephyr/zephyr.hex \
             -o supermini_openthread_cli_nicenano.uf2
 
-      - name: Upload UF2 Artifact
+      - name: Upload OpenThread UF2 Artifact
         uses: actions/upload-artifact@v4
         with:
           name: supermini-openthread-uf2
           path: |
-            *.uf2
+            supermini_openthread_*.uf2
             build_ot/zephyr/zephyr.hex
+
+  build-matter:
+    name: Build Matter On/Off Light & Health Checker
+    runs-on: ubuntu-latest
+    container:
+      image: nordicplayground/nrfconnect-sdk:v2.7-branch
+      options: --user root
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          path: app
+
+      - name: Configure Git Safe Directory
+        run: |
+          git config --global --add safe.directory "*"
+
+      - name: Locate Matter Sample & Compile Firmware
+        shell: bash
+        run: |
+          echo "=== Searching for Matter Samples in NCS ==="
+          SAMPLE_PATH=$(find / -type d -path "*/samples/matter/light_bulb" 2>/dev/null | head -n 1)
+          if [ -z "$SAMPLE_PATH" ]; then
+            echo "light_bulb sample not found, looking for template..."
+            SAMPLE_PATH=$(find / -type d -path "*/samples/matter/template" 2>/dev/null | head -n 1)
+          fi
+          echo "Selected Matter Sample Path: $SAMPLE_PATH"
+
+          if [ -z "$SAMPLE_PATH" ]; then
+            echo "ERROR: Could not locate Matter sample directory!"
+            exit 1
+          fi
+
+          # Detect board target name
+          BOARD="nrf52840dongle/nrf52840"
+          if ! west boards 2>/dev/null | grep -q "nrf52840dongle/nrf52840"; then
+            BOARD="nrf52840dongle_nrf52840"
+          fi
+          echo "Selected board target: $BOARD"
+
+          # Determine base config file
+          CONF="prj_no_dfu.conf"
+          if [ ! -f "$SAMPLE_PATH/prj_no_dfu.conf" ]; then
+            CONF="prj.conf"
+          fi
+          echo "Selected base conf: $CONF"
+
+          # Build Matter firmware
+          west build -p always -b "$BOARD" -d build_matter "$SAMPLE_PATH" -- \
+            -DEXTRA_DTC_OVERLAY_FILE="$GITHUB_WORKSPACE/app/firmware/boards/supermini_nrf52840.overlay" \
+            -DCONF_FILE="$CONF" \
+            -DEXTRA_CONF_FILE="$GITHUB_WORKSPACE/app/firmware/boards/supermini_matter.conf"
+
+      - name: Convert to UF2
+        shell: bash
+        run: |
+          python3 app/tools/uf2conv.py -c -b 0x26000 -f 0xada52840 \
+            build_matter/zephyr/zephyr.hex \
+            -o supermini_matter_health_checker.uf2
+          python3 app/tools/uf2conv.py -c -b 0x26000 -f 0x239a00b3 \
+            build_matter/zephyr/zephyr.hex \
+            -o supermini_matter_health_checker_nicenano.uf2
+
+      - name: Upload Matter UF2 Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: supermini-matter-uf2
+          path: |
+            supermini_matter_*.uf2
+            build_matter/zephyr/zephyr.hex
